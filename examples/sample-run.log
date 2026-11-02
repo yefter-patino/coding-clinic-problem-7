@@ -1,0 +1,93 @@
+$ python3 src/semver_release.py   # 1) first release
+Last release: none; 3 commit(s) since then.
+Bump: first release -> v0.1.0
+
+## 0.1.0 (2026-10-01)
+
+### Features
+
+* add health endpoint ([9582984](https://github.com/yefterpatino/problem-7-demo/commit/<sha>))
+
+### Bug Fixes
+
+* **docker:** run as non-root user ([83c15e8](https://github.com/yefterpatino/problem-7-demo/commit/<sha>))
+
+Created annotated tag v0.1.0 on 83c15e8
+Pushed refs/tags/v0.1.0 to origin
+output released=true
+output version=0.1.0
+output tag=v0.1.0
+output previous-version=
+output bump=initial
+output notes=<326 chars>
+
+$ python3 src/semver_release.py   # 2) a feature, a perf fix, docs and one non-conventional commit
+Last release: v0.1.0; 4 commit(s) since then.
+  not a Conventional Commit, ignored: c4cb70d Updated some stuff
+Bump: minor -> v0.2.0
+
+## [0.2.0](https://github.com/yefterpatino/problem-7-demo/compare/v0.1.0...v0.2.0) (2026-10-12)
+
+### Features
+
+* **api:** add /version endpoint ([10283a0](https://github.com/yefterpatino/problem-7-demo/commit/<sha>))
+
+### Performance Improvements
+
+* **db:** cache the lookup table ([9c949dc](https://github.com/yefterpatino/problem-7-demo/commit/<sha>))
+
+Created annotated tag v0.2.0 on c4cb70d
+Pushed refs/tags/v0.2.0 to origin
+output released=true
+output version=0.2.0
+output tag=v0.2.0
+output previous-version=0.1.0
+output bump=minor
+output notes=<424 chars>
+
+$ python3 src/semver_release.py --dry-run true   # 3a) preview
+Last release: v0.2.0; 2 commit(s) since then.
+Bump: major, but 0.x only bumps the minor (set major-on-zero to reach 1.0.0) -> v0.3.0
+DRY RUN: no file changed, no tag created, nothing pushed.
+output released=false
+output version=0.3.0
+output tag=v0.3.0
+output previous-version=0.2.0
+output bump=major
+output notes=<594 chars>
+output dry-run=true
+
+$ python3 src/semver_release.py   # 3b) breaking change while still 0.x
+Last release: v0.2.0; 2 commit(s) since then.
+Bump: major, but 0.x only bumps the minor (set major-on-zero to reach 1.0.0) -> v0.3.0
+
+## [0.3.0](https://github.com/yefterpatino/problem-7-demo/compare/v0.2.0...v0.3.0) (2026-10-23)
+
+### ⚠ BREAKING CHANGES
+
+* **api:** clients must call /v2/... instead of /v1/... ([05739f0](https://github.com/yefterpatino/problem-7-demo/commit/<sha>))
+
+### Features
+
+* **api:** remove the v1 routes ([05739f0](https://github.com/yefterpatino/problem-7-demo/commit/<sha>))
+
+### Bug Fixes
+
+* correct the timeout default ([0431371](https://github.com/yefterpatino/problem-7-demo/commit/<sha>))
+
+Created annotated tag v0.3.0 on 0431371
+Pushed refs/tags/v0.3.0 to origin
+output released=true
+output version=0.3.0
+output tag=v0.3.0
+output previous-version=0.2.0
+output bump=major
+output notes=<594 chars>
+
+$ python3 src/semver_release.py   # 4) run again on the same commit
+HEAD is already released as v0.3.0. Nothing to do.
+output released=false
+output version=0.3.0
+output tag=v0.3.0
+output previous-version=0.3.0
+output bump=none

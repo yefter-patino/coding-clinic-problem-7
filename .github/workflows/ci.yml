@@ -1,0 +1,67 @@
+# Checks for this action's own code.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.12", "3.14"]
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install tools
+        run: pip install pytest pyyaml ruff actionlint-py zizmor
+
+      - name: Lint Python
+        run: ruff check . && ruff format --check .
+
+      - name: Lint workflows and action
+        run: |
+          actionlint .github/workflows/*.yml examples/*.yml
+          zizmor --offline .github/workflows/ examples/ action.yml
+
+      - name: Tests (real git, local remotes)
+        run: python -m pytest
+
+  self-test:
+    # Run the action itself on this repository, in dry-run mode.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Run the action (dry run)
+        id: semver
+        uses: ./
+        with:
+          dry-run: "true"
+
+      - name: Check the outputs
+        env:
+          VERSION: ${{ steps.semver.outputs.version }}
+          RELEASED: ${{ steps.semver.outputs.released }}
+        run: |
+          echo "version=$VERSION released=$RELEASED"
+          [ "$RELEASED" = "false" ] || { echo "a dry run must never release"; exit 1; }

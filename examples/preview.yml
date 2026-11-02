@@ -1,0 +1,29 @@
+# Copy to .github/workflows/release-preview.yml.
+# On every pull request: show which version merging it would release, and (strict) fail when a
+# commit message is not a Conventional Commit. Changes nothing: dry run.
+name: release-preview
+
+on:
+  pull_request:
+
+permissions: {}
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Preview the next release
+        # uses: yefterpatino/problem-7@<commit-sha> # v1.0.0
+        uses: ./
+        with:
+          dry-run: "true"
+          strict: "true"

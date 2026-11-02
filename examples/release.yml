@@ -1,0 +1,63 @@
+# Copy to .github/workflows/release.yml in the repository you want to release.
+# On every push to main: work out the version, update the changelog, tag, push, GitHub Release.
+name: release
+
+on:
+  push:
+    branches: [main]
+
+permissions: {}
+
+# Two releases must never run at the same time (they would both pick the same version).
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write   # push the tag and create the GitHub Release
+    outputs:
+      released: ${{ steps.semver.outputs.released }}
+      tag: ${{ steps.semver.outputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0             # all commits and tags are needed to find the last release
+          persist-credentials: false # the action pushes with github-token itself
+
+      - name: Semantic release
+        id: semver
+        # Replace with your copy of this action, pinned to a commit SHA, for example:
+        # uses: yefterpatino/problem-7@<commit-sha> # v1.0.0
+        uses: ./
+        with:
+          create-release: "true"
+
+      - name: Show the result
+        env:
+          RELEASED: ${{ steps.semver.outputs.released }}
+          TAG: ${{ steps.semver.outputs.tag }}
+          BUMP: ${{ steps.semver.outputs.bump }}
+        run: echo "released=$RELEASED tag=$TAG bump=$BUMP"
+
+  # Tags pushed with GITHUB_TOKEN do not start other workflows (GitHub prevents loops), so build
+  # the release here, in the same workflow, only when a new version was created.
+  build:
+    needs: release
+    if: needs.release.outputs.released == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.release.outputs.tag }}
+          persist-credentials: false
+      - name: Build the release
+        env:
+          TAG: ${{ needs.release.outputs.tag }}
+        run: |
+          echo "Build, test and publish $TAG here (for example the container pipeline from Problem 6)."

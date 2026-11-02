@@ -1,0 +1,36 @@
+flowchart TD
+    push(["Push to main<br/>(or a pull request in dry-run preview mode)"]) --> checkout["actions/checkout<br/>fetch-depth: 0 (all tags + history)"]
+    checkout --> shallow{"Shallow clone?"}
+    shallow -- yes --> err1(["Fail: use fetch-depth: 0"])
+    shallow -- no --> head{"HEAD already has<br/>a vX.Y.Z tag?"}
+    head -- yes --> noop1(["Nothing to do<br/>(safe to run twice)"])
+    head -- no --> last["Find the highest vX.Y.Z tag<br/>in HEAD's history"]
+    last --> log["git log last-tag..HEAD<br/>(merge commits skipped)"]
+    log --> parse["Parse each subject:<br/>type(scope)!: description<br/>+ BREAKING CHANGE: footer"]
+    parse --> strict{"Non-conventional commits<br/>and strict mode?"}
+    strict -- yes --> err2(["Fail: list the bad commits"])
+    strict -- no --> bump{"Biggest bump"}
+    bump -- "! or BREAKING CHANGE" --> major["major<br/>1.4.2 → 2.0.0<br/>(0.x → minor)"]
+    bump -- feat --> minor["minor<br/>1.4.2 → 1.5.0"]
+    bump -- "fix / perf / revert" --> patch["patch<br/>1.4.2 → 1.4.3"]
+    bump -- "only docs / chore / ci..." --> noop2(["No release"])
+    major --> notes
+    minor --> notes
+    patch --> notes
+    notes["Release notes (Markdown)<br/>Breaking / Features / Bug Fixes / Performance<br/>with commit + compare links"] --> dry{"dry-run?"}
+    dry -- yes --> preview(["Job summary:<br/>next release would be vX.Y.Z"])
+    dry -- no --> changelog["Prepend section to CHANGELOG.md<br/>(skipped if version already there)"]
+    changelog --> commitq{"commit-changelog?"}
+    commitq -- yes --> commit["Commit<br/>chore(release): vX.Y.Z [skip ci]"]
+    commitq -- no --> tag
+    commit --> tag["Annotated tag vX.Y.Z<br/>message = release notes"]
+    tag --> pushq["git push --atomic<br/>branch + tag together, or neither"]
+    pushq --> rel{"create-release?"}
+    rel -- yes --> ghrel["gh release create vX.Y.Z<br/>--notes-file --verify-tag"]
+    rel -- no --> out
+    ghrel --> out(["Outputs: released, version, tag,<br/>previous-version, bump, notes, release-url"])
+
+    classDef bad fill:#fde2e1,stroke:#c0392b,color:#000
+    classDef good fill:#e3f4e1,stroke:#2e7d32,color:#000
+    class err1,err2 bad
+    class out,preview good

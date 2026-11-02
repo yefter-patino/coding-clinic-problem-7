@@ -1,0 +1,124 @@
+name: Semantic release from Conventional Commits
+description: >-
+  Works out the next semantic version from Conventional Commits, writes the changelog, creates an
+  annotated Git tag, pushes it, and can publish a GitHub Release. Does nothing when there is nothing
+  to release.
+author: yefter
+branding:
+  icon: tag
+  color: blue
+
+inputs:
+  tag-prefix:
+    description: Text in front of the version in tag names ("v" gives v1.2.3).
+    default: v
+  initial-version:
+    description: Version of the very first release, when no tag exists yet.
+    default: 0.1.0
+  minor-types:
+    description: Commit types that bump the minor version (comma-separated).
+    default: feat
+  patch-types:
+    description: Commit types that bump the patch version (comma-separated).
+    default: fix,perf,revert
+  major-on-zero:
+    description: Let a breaking change in 0.x go to 1.0.0. By default 0.x only bumps the minor.
+    default: "false"
+  changelog-file:
+    description: Changelog file to update.
+    default: CHANGELOG.md
+  commit-changelog:
+    description: >-
+      Commit the updated changelog and push it to the branch, together with the tag. Needs a token
+      that is allowed to push to the branch (a protected branch will refuse GITHUB_TOKEN).
+    default: "false"
+  branch:
+    description: Branch to push the changelog commit to (only used with commit-changelog).
+    default: ${{ github.ref_name }}
+  push:
+    description: Push the tag (and the changelog commit) to origin.
+    default: "true"
+  dry-run:
+    description: Only calculate and report the next version. Changes nothing.
+    default: "false"
+  strict:
+    description: Fail when a commit message is not a Conventional Commit.
+    default: "false"
+  create-release:
+    description: Also create a GitHub Release with the release notes.
+    default: "false"
+  github-token:
+    description: Token used to push and to create the release. Needs "contents write".
+    default: ${{ github.token }}
+  git-user-name:
+    description: Name recorded on the tag (and changelog commit).
+    default: github-actions[bot]
+  git-user-email:
+    description: Email recorded on the tag (and changelog commit).
+    default: 41898282+github-actions[bot]@users.noreply.github.com
+
+outputs:
+  released:
+    description: '"true" when a new version was tagged in this run.'
+    value: ${{ steps.release.outputs.released }}
+  version:
+    description: The new version (or the current one when nothing was released), without prefix.
+    value: ${{ steps.release.outputs.version }}
+  tag:
+    description: The new tag, for example v1.3.0.
+    value: ${{ steps.release.outputs.tag }}
+  previous-version:
+    description: The version before this release ("" for the first release).
+    value: ${{ steps.release.outputs.previous-version }}
+  bump:
+    description: major, minor, patch, initial or none.
+    value: ${{ steps.release.outputs.bump }}
+  notes:
+    description: Release notes (Markdown) for this version.
+    value: ${{ steps.release.outputs.notes }}
+  release-url:
+    description: URL of the GitHub Release, when create-release is true.
+    value: ${{ steps.github-release.outputs.url }}
+
+runs:
+  using: composite
+  steps:
+    - name: Check tools
+      shell: bash
+      run: |
+        command -v python3 >/dev/null || { echo "::error::python3 is required"; exit 1; }
+        command -v git >/dev/null || { echo "::error::git is required"; exit 1; }
+
+    - name: Version, changelog and tag
+      id: release
+      shell: bash
+      env:
+        SR_TAG_PREFIX: ${{ inputs.tag-prefix }}
+        SR_INITIAL_VERSION: ${{ inputs.initial-version }}
+        SR_MINOR_TYPES: ${{ inputs.minor-types }}
+        SR_PATCH_TYPES: ${{ inputs.patch-types }}
+        SR_MAJOR_ON_ZERO: ${{ inputs.major-on-zero }}
+        SR_CHANGELOG_FILE: ${{ inputs.changelog-file }}
+        SR_COMMIT_CHANGELOG: ${{ inputs.commit-changelog }}
+        SR_BRANCH: ${{ inputs.branch }}
+        SR_PUSH: ${{ inputs.push }}
+        SR_DRY_RUN: ${{ inputs.dry-run }}
+        SR_STRICT: ${{ inputs.strict }}
+        SR_TOKEN: ${{ inputs.github-token }}
+        SR_GIT_USER_NAME: ${{ inputs.git-user-name }}
+        SR_GIT_USER_EMAIL: ${{ inputs.git-user-email }}
+        SR_NOTES_FILE: ${{ runner.temp }}/release-notes.md
+      run: python3 "$GITHUB_ACTION_PATH/src/semver_release.py"
+
+    - name: GitHub Release
+      id: github-release
+      if: inputs.create-release == 'true' && steps.release.outputs.released == 'true'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        TAG: ${{ steps.release.outputs.tag }}
+        NOTES_FILE: ${{ runner.temp }}/release-notes.md
+      run: |
+        url="$(gh release create "$TAG" --title "$TAG" --notes-file "$NOTES_FILE" --verify-tag)"
+        echo "url=$url" >>"$GITHUB_OUTPUT"
+        echo "Created GitHub Release: $url"
